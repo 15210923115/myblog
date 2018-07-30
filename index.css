@@ -1,5 +1,5 @@
 *{margin:0;padding:0;}
 html,body{width:100%;}
 body{color:#333;font-size:14px;}
-.head-title{margin:0 auto;font-size:18px;font-weight:900;}
+.head-title{text-align:center;margin:20px;font-size:18px;font-weight:900;}
 .list{padding:20px;color:#555;}
