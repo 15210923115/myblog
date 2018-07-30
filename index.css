@@ -1,3 +1,4 @@
-body{
-  color:red;
-}
+*{margin:0;padding:0;}
+body{color:#333;font-size:14px;}
+.head-title{margin:0 auto;font-size:18px;font-weight:900;}
+.list{padding:10px;colr:#555;}
