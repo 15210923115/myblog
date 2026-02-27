@@ -1,13 +1,1395 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Document</title>
-    <link rel="stylesheet" href="index.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a0a2e">
+<title>羊了个羊</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700;900&display=swap');
+
+  :root {
+    --bg:#1a0a2e; --bg2:#2d1457;
+    --accent:#ff6b35; --accent2:#ffd700; --red:#f87171;
+    --card-shadow:0 4px 12px rgba(0,0,0,.5);
+    --slot-bg:rgba(255,255,255,.08); --slot-border:rgba(255,255,255,.2);
+    --card-size:56px; --card-font:28px; --slot-size:52px; --slot-font:24px;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden;touch-action:none}
+
+  body{
+    font-family:'Noto Sans SC',sans-serif;background:var(--bg);
+    display:flex;flex-direction:column;align-items:center;position:relative;
+    padding-top:env(safe-area-inset-top);
+    padding-bottom:20px;
+    padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);
+  }
+  body::before{
+    content:'';position:fixed;inset:0;
+    background:radial-gradient(ellipse at 20% 20%,rgba(255,107,53,.15) 0%,transparent 50%),
+               radial-gradient(ellipse at 80% 80%,rgba(138,43,226,.2) 0%,transparent 50%),
+               radial-gradient(ellipse at 50% 50%,rgba(45,20,87,.8) 0%,transparent 70%);
+    animation:bgPulse 8s ease-in-out infinite;z-index:0;pointer-events:none;
+  }
+  @keyframes bgPulse{0%,100%{opacity:1}50%{opacity:.7}}
+
+  #app{
+    position:relative;z-index:1;width:100%;max-width:480px;height:100%;
+    display:flex;flex-direction:column;padding:0 10px;
+  }
+
+  header{display:flex;align-items:center;justify-content:space-between;padding:10px 0 6px;flex-shrink:0}
+  .logo{
+    font-size:clamp(18px,5vw,26px);font-weight:900;
+    background:linear-gradient(135deg,var(--accent2),var(--accent));
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    letter-spacing:2px;filter:drop-shadow(0 0 10px rgba(255,215,0,.4));
+  }
+
+  .stats{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:0 4px 3px;font-size:clamp(11px,2.8vw,12px);
+    color:rgba(255,255,255,.6);flex-shrink:0;
+  }
+  .timer{font-variant-numeric:tabular-nums}
+  #total-score-display{
+    color:rgba(255,215,0,.65);
+    font-size:clamp(10px,2.5vw,11px);
+  }
+
+  .progress-bar{height:5px;background:rgba(255,255,255,.1);border-radius:3px;margin:3px 0;overflow:hidden;flex-shrink:0}
+  .progress-fill{
+    height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));
+    border-radius:3px;transition:width .4s ease;box-shadow:0 0 8px rgba(255,215,0,.4);
+  }
+
+  /* ── Tool bar (original style, below slot-area) ── */
+  .tools{display:flex;gap:6px;justify-content:center;margin:4px 0 0;flex-shrink:0}
+  .tool-btn{
+    background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+    color:#fff;padding:7px 12px;border-radius:20px;font-size:clamp(11px,3vw,13px);
+    cursor:pointer;transition:background .15s,transform .1s;font-family:inherit;
+    display:flex;align-items:center;gap:4px;min-height:38px;touch-action:manipulation;
+  }
+  .tool-btn:active{background:rgba(255,255,255,.28);transform:scale(.94)}
+  .tool-btn:disabled{opacity:.4;cursor:not-allowed}
+  .tool-count{background:var(--accent);color:#fff;border-radius:10px;padding:0 5px;font-size:11px;font-weight:700}
+  #btn-restart{
+    padding:7px 10px;
+    background:rgba(255,255,255,.07);
+    border-color:rgba(255,255,255,.15);
+    font-size:16px;
+    flex-shrink:0;
+  }
+  #btn-restart:active{background:rgba(255,100,100,.25);transform:scale(.9)}
+
+  /* ── Level map modal ── */
+  .level-badge{
+    background:linear-gradient(135deg,var(--accent),#c2410c);color:#fff;
+    padding:4px 14px;border-radius:20px;font-size:clamp(11px,3vw,13px);
+    font-weight:700;box-shadow:0 2px 8px rgba(255,107,53,.4);
+    cursor:pointer;touch-action:manipulation;user-select:none;
+    transition:transform .1s,box-shadow .15s;
+  }
+  .level-badge:active{transform:scale(.93);box-shadow:0 1px 4px rgba(255,107,53,.3)}
+
+  #level-map-overlay{
+    position:fixed;inset:0;z-index:1100;
+    background:rgba(0,0,0,.78);backdrop-filter:blur(10px);
+    display:flex;align-items:center;justify-content:center;
+    padding:20px;animation:fadeIn .25s ease;
+  }
+  #level-map-overlay.hidden{display:none}
+  .level-map-box{
+    background:linear-gradient(145deg,#2d1457,#1a0a2e);
+    border:1px solid rgba(255,255,255,.18);border-radius:24px;
+    padding:22px 18px 20px;width:100%;max-width:360px;
+    box-shadow:0 24px 64px rgba(0,0,0,.8);
+    animation:slideUp .3s cubic-bezier(.34,1.56,.64,1);
+  }
+  .level-map-title{
+    text-align:center;font-size:16px;font-weight:900;
+    color:rgba(255,255,255,.9);margin-bottom:16px;letter-spacing:1px;
+  }
+  .level-map-grid{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:10px;
+  }
+  .lm-cell{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:3px;border-radius:14px;padding:10px 4px 8px;
+    border:1.5px solid transparent;
+    font-size:11px;font-weight:700;
+    cursor:pointer;touch-action:manipulation;
+    transition:transform .1s;
+    min-height:68px;
+  }
+  .lm-cell:active{transform:scale(.92)}
+  .lm-cell .lm-num{font-size:18px;font-weight:900}
+  .lm-cell .lm-label{font-size:9px;letter-spacing:.3px;opacity:.8}
+
+  /* Locked */
+  .lm-cell.locked{
+    background:rgba(255,255,255,.04);
+    border-color:rgba(255,255,255,.1);
+    color:rgba(255,255,255,.3);
+    cursor:default;
+  }
+  .lm-cell.locked .lm-num{font-size:20px;color:rgba(255,255,255,.2)}
+  /* Cleared */
+  .lm-cell.cleared{
+    background:rgba(74,222,128,.1);
+    border-color:rgba(74,222,128,.45);
+    color:rgba(74,222,128,.9);
+    box-shadow:0 0 12px rgba(74,222,128,.15);
+  }
+  .lm-cell.cleared .lm-num{color:#4ade80}
+  /* Current */
+  .lm-cell.current{
+    background:linear-gradient(145deg,rgba(255,107,53,.25),rgba(255,215,0,.15));
+    border-color:rgba(255,215,0,.7);
+    color:#ffd700;
+    box-shadow:0 0 16px rgba(255,215,0,.3);
+    animation:lmPulse 1.4s ease-in-out infinite;
+  }
+  .lm-cell.current .lm-num{color:#ffd700}
+  @keyframes lmPulse{0%,100%{box-shadow:0 0 10px rgba(255,215,0,.25)}50%{box-shadow:0 0 22px rgba(255,215,0,.5)}}
+  /* Available (unlocked, not yet started) */
+  .lm-cell.available{
+    background:rgba(255,255,255,.07);
+    border-color:rgba(255,255,255,.25);
+    color:rgba(255,255,255,.75);
+  }
+  .level-map-close{
+    display:block;width:100%;margin-top:14px;
+    padding:11px;border-radius:16px;border:none;
+    background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);
+    font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;
+    touch-action:manipulation;
+  }
+  .level-map-close:active{background:rgba(255,255,255,.2)}
+
+  #board-container{
+    position:relative;background:rgba(0,0,0,.3);border-radius:16px;
+    border:1px solid rgba(255,255,255,.1);overflow:hidden;backdrop-filter:blur(10px);
+    flex:1;display:flex;flex-direction:column;min-height:0;
+    transition:box-shadow .3s ease;
+  }
+  #board-container.danger-flash{
+    animation:boardDanger .7s ease-in-out infinite;
+  }
+  @keyframes boardDanger{
+    0%  { box-shadow: 0 0 0px 0px rgba(220,38,38,0); border-color: rgba(255,255,255,.1); }
+    50% { box-shadow: 0 0 28px 8px rgba(220,38,38,.75), inset 0 0 18px 2px rgba(220,38,38,.2); border-color: rgba(220,38,38,.8); }
+    100%{ box-shadow: 0 0 0px 0px rgba(220,38,38,0); border-color: rgba(255,255,255,.1); }
+  }
+  #board{position:relative;flex:1;min-height:0;overflow:hidden}
+
+  /* ── Cards ── */
+  .card{
+    position:absolute;width:var(--card-size);height:var(--card-size);
+    border-radius:10px;display:flex;align-items:center;justify-content:center;
+    font-size:var(--card-font);cursor:pointer;user-select:none;
+    border:2px solid rgba(255,255,255,.6);
+    background:linear-gradient(145deg,#fff 0%,#f0f0f0 100%);
+    box-shadow:var(--card-shadow);touch-action:manipulation;
+  }
+  .card.active{
+    border-color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.4),0 0 0 2px rgba(255,215,0,.5);
+  }
+  @media(hover:hover){
+    .card.active:hover{
+      transform:scale(1.08) translateY(-3px);
+      box-shadow:0 8px 24px rgba(0,0,0,.5),0 0 0 2px var(--accent2);z-index:100;
+    }
+  }
+  .card.pressing{transform:scale(.88);transition:transform .08s}
+  /* Blocked: clearly readable but visually distinct from clickable cards.
+     No grayscale/heavy dimming — the emoji must stay legible. */
+  .card.blocked{
+    opacity:.78;
+    cursor:not-allowed;
+    border-color:rgba(180,160,220,.5);
+    box-shadow:0 2px 6px rgba(0,0,0,.3);
+  }
+  .card.blocked::after{
+    content:'';position:absolute;inset:0;
+    background:rgba(30,10,70,.28);
+    border-radius:8px;
+    pointer-events:none;
+  }
+  .card.eliminating{animation:pop .32s ease-out forwards}
+  @keyframes pop{0%{transform:scale(1);opacity:1}50%{transform:scale(1.4);opacity:.8}100%{transform:scale(0);opacity:0}}
+
+  /* ── Buffer / Park area — flex child so board shrinks when open ── */
+  #buffer-area{
+    flex-shrink:0;
+    max-height:0;
+    overflow:hidden;
+    transition:max-height .28s ease;
+    background:rgba(20,8,50,.92);
+    border-top:0px solid rgba(255,165,0,.35);
+  }
+  #buffer-area.active{
+    max-height:60px;
+    border-top-width:1px;
+    padding:5px 6px 4px;
+  }
+  /* Scrollable single-row strip */
+  .buffer-cards{
+    display:flex;gap:4px;justify-content:center;
+    flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .buffer-cards::-webkit-scrollbar{display:none}
+  .buffer-card{
+    flex:0 0 auto;
+    width:clamp(32px,calc((100vw - 60px) / 9 - 4px),var(--slot-size));
+    aspect-ratio:1/1;
+    border-radius:8px;
+    border:2px solid rgba(255,165,0,.7);
+    background:linear-gradient(145deg,#fff3e0,#ffe0b2);
+    display:flex;align-items:center;justify-content:center;
+    font-size:clamp(12px,3.5vw,var(--slot-font));
+    box-shadow:0 2px 8px rgba(0,0,0,.3);
+    cursor:pointer;touch-action:manipulation;
+    transition:transform .1s,box-shadow .1s;
+  }
+  .buffer-card:hover{transform:scale(1.06);box-shadow:0 4px 12px rgba(255,165,0,.4)}
+  .buffer-card.pressing{transform:scale(.88)}
+
+  /* ── Slot area ── */
+  #slot-area{
+    display:flex;align-items:center;justify-content:center;
+    gap:4px;padding:7px 4px;
+    background:rgba(0,0,0,.4);border-top:1px solid rgba(255,255,255,.1);
+    flex-shrink:0;overflow:hidden;
+  }
+  .slot{
+    flex:1 1 0;min-width:0;max-width:var(--slot-size);aspect-ratio:1/1;
+    border-radius:8px;border:2px dashed var(--slot-border);background:var(--slot-bg);
+    display:flex;align-items:center;justify-content:center;
+    font-size:clamp(14px,5vw,var(--slot-font));
+    transition:border-color .2s,background .2s;position:relative;
+  }
+  .slot.filled{
+    border-style:solid;border-color:rgba(255,255,255,.4);
+    background:linear-gradient(145deg,#fff,#f0f0f0);
+    box-shadow:0 2px 8px rgba(0,0,0,.3);
+    animation:slotFill .28s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes slotFill{0%{transform:scale(.5)}100%{transform:scale(1)}}
+  .slot.danger{
+    border-color:var(--red)!important;background:rgba(248,113,113,.15)!important;
+    animation:dangerPulse .5s ease infinite alternate;
+  }
+  @keyframes dangerPulse{from{box-shadow:0 0 0 0 rgba(248,113,113,.4)}to{box-shadow:0 0 0 5px rgba(248,113,113,0)}}
+
+  /* ── Overlays ── */
+  .overlay{
+    position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    z-index:1000;background:rgba(0,0,0,.72);backdrop-filter:blur(8px);
+    animation:fadeIn .3s ease;padding:16px;
+    padding-bottom:16px;
+  }
+  }
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .overlay-box{
+    background:linear-gradient(145deg,var(--bg2),var(--bg));
+    border:1px solid rgba(255,255,255,.2);border-radius:24px;
+    padding:28px 24px;text-align:center;max-width:320px;width:100%;
+    box-shadow:0 20px 60px rgba(0,0,0,.8);
+    animation:slideUp .4s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes slideUp{from{transform:translateY(40px) scale(.9);opacity:0}to{transform:translateY(0) scale(1);opacity:1}}
+  .overlay-emoji{font-size:56px;margin-bottom:10px;animation:bounce 1s ease infinite}
+  @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+  .overlay-title{
+    font-size:clamp(20px,6vw,28px);font-weight:900;margin-bottom:8px;
+    background:linear-gradient(135deg,var(--accent2),var(--accent));
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  .overlay-desc{color:rgba(255,255,255,.7);font-size:14px;line-height:1.6;margin-bottom:18px}
+  .btn-primary{
+    background:linear-gradient(135deg,var(--accent),#c2410c);color:#fff;border:none;
+    padding:13px 32px;border-radius:24px;font-size:16px;font-weight:700;cursor:pointer;
+    font-family:inherit;transition:transform .1s;box-shadow:0 4px 16px rgba(255,107,53,.4);
+    width:100%;margin-bottom:10px;touch-action:manipulation;min-height:50px;
+  }
+  .btn-primary:active{transform:scale(.97)}
+  .btn-secondary{
+    background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);
+    border:1px solid rgba(255,255,255,.2);padding:11px 24px;border-radius:24px;
+    font-size:14px;cursor:pointer;font-family:inherit;transition:background .2s;
+    width:100%;touch-action:manipulation;min-height:46px;
+  }
+  .btn-secondary:active{background:rgba(255,255,255,.2)}
+
+  /* ── FX ── */
+  .particle{position:fixed;pointer-events:none;font-size:18px;z-index:999;animation:floatUp .9s ease-out forwards}
+  @keyframes floatUp{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-90px) scale(.3) rotate(360deg);opacity:0}}
+  .combo-popup{
+    position:fixed;font-size:clamp(22px,7vw,32px);font-weight:900;
+    color:var(--accent2);text-shadow:0 0 20px rgba(255,215,0,.8);
+    pointer-events:none;z-index:999;white-space:nowrap;
+    animation:comboPop .8s ease-out forwards;
+  }
+  @keyframes comboPop{0%{transform:translateX(-50%) scale(.5);opacity:1}60%{transform:translateX(-50%) scale(1.3) translateY(-20px);opacity:1}100%{transform:translateX(-50%) scale(1) translateY(-50px);opacity:0}}
+  .confetti-piece{position:fixed;width:10px;height:10px;border-radius:2px;z-index:998;pointer-events:none;animation:confettiFall linear forwards}
+  @keyframes confettiFall{0%{transform:translateY(-20px) rotate(0);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
+
+  .score-popup{
+    position:fixed;pointer-events:none;z-index:1001;
+    font-weight:900;white-space:nowrap;
+  }
+  .score-popup.gain{
+    font-size:clamp(15px,4.5vw,20px);
+    color:#ffd700;
+    text-shadow:0 0 8px rgba(255,215,0,.9), 0 1px 3px rgba(0,0,0,.7);
+    animation:scorePopUp 1.2s cubic-bezier(.22,.68,0,1.2) forwards;
+  }
+  .score-popup.lose{
+    font-size:clamp(13px,4vw,17px);
+    color:#f43f5e;
+    text-shadow:0 0 6px rgba(244,63,94,.8), 0 1px 3px rgba(0,0,0,.7);
+    animation:scorePopDown 1.2s cubic-bezier(.22,.68,0,1.1) forwards;
+  }
+  @keyframes scorePopUp{
+    0%   {transform:translateY(0)    scale(.7);  opacity:0}
+    12%  {transform:translateY(-6px) scale(1.25);opacity:1}
+    60%  {transform:translateY(-44px) scale(1);  opacity:1}
+    100% {transform:translateY(-72px) scale(.85);opacity:0}
+  }
+  @keyframes scorePopDown{
+    0%   {transform:translateY(0)    scale(.7);  opacity:0}
+    12%  {transform:translateY(6px)  scale(1.15);opacity:1}
+    60%  {transform:translateY(38px) scale(1);   opacity:1}
+    100% {transform:translateY(62px) scale(.85); opacity:0}
+  }
+
+  /* ── Responsive ── */
+  @media(max-width:380px){
+    :root{--card-size:46px;--card-font:22px;--slot-size:42px;--slot-font:20px}
+    #app{padding:0 6px} .tool-btn{padding:6px 9px} #slot-area{gap:3px;padding:5px 3px}
+  }
+  @media(max-width:320px){
+    :root{--card-size:40px;--card-font:18px;--slot-size:36px;--slot-font:17px}
+    #slot-area{gap:2px}
+  }
+  @media(orientation:landscape) and (max-height:500px){
+    :root{--card-size:44px;--card-font:20px;--slot-size:40px;--slot-font:18px}
+    header{padding:4px 0 2px} .stats{padding-bottom:1px} .tools{margin:2px 0}
+    .tool-btn{min-height:32px;padding:5px 10px}
+  }
+</style>
 </head>
 <body>
-    hello yang
+<div id="app">
+  <header>
+    <div class="logo">🐑 羊了个羊</div>
+    <div class="level-badge" id="level-label" ontouchend="openLevelMap(event)" onclick="openLevelMap(event)">1/8</div>
+  </header>
+  <div class="stats">
+    <span id="card-count">剩余: 0 张</span>
+    <span class="timer" id="timer">01:00</span>
+    <span id="score-display">得分: 0 <span id="total-score-display">(累计: 0)</span></span>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+  <div id="board-container">
+    <div id="board"></div>
+    <div id="buffer-area">
+      <div class="buffer-cards" id="buffer-cards"></div>
+    </div>
+    <div id="slot-area"></div>
+  </div>
+  <div class="tools">
+    <button class="tool-btn" id="btn-undo"    ontouchend="handleTool(event,'undo')"    onclick="handleTool(event,'undo')">↩ 撤销 <span class="tool-count" id="undo-count">1</span></button>
+    <button class="tool-btn" id="btn-remove"  ontouchend="handleTool(event,'remove')"  onclick="handleTool(event,'remove')">📦 移出 <span class="tool-count" id="remove-count">1</span></button>
+    <button class="tool-btn" id="btn-shuffle" ontouchend="handleTool(event,'shuffle')" onclick="handleTool(event,'shuffle')">🔀 洗牌 <span class="tool-count" id="shuffle-count">1</span></button>
+    <button class="tool-btn" id="btn-restart" ontouchend="handleRestart(event)"        onclick="handleRestart(event)">🔄</button>
+  </div>
+</div>
+
+<!-- Level map modal -->
+<div id="level-map-overlay" class="hidden">
+  <div class="level-map-box">
+    <div class="level-map-title">🗺️ 关卡地图</div>
+    <div class="level-map-grid" id="level-map-grid"></div>
+    <button class="level-map-close" ontouchend="closeLevelMap(event)" onclick="closeLevelMap(event)">关闭</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+// CONSTANTS
+// ══════════════════════════════════════════════
+const ICONS = ['🐑','🌸','🎯','⭐','🍎','🎪','🦋','🌙','🍀','🎵','🎃','🌈','🔥','💎','🎁','🐉','🌺','🍭','🎠','🦄'];
+const SLOT_SIZE = 7;
+
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+let state = {
+  cards:[], slots:[], buffer:[],
+  level:1, totalCards:0,
+  tools:{undo:3, remove:3, shuffle:3},
+  history:[], score:0, totalScore:0,
+  levelStartTotalScore:0,
+  combo:0,
+  highestCleared:0,
+  levelRecords:{},  // { [level]: { score, clearSec } }
+  startTime:null, timerInterval:null, gameOver:false
+};
+let cardIdCounter = 0;
+
+// ══════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════
+function getBoardDimensions() {
+  const b = document.getElementById('board');
+  const r = b.getBoundingClientRect();
+  return { w: r.width || 360, h: r.height || 300 };
+}
+function getCardSize() {
+  return parseInt(getComputedStyle(document.documentElement).getPropertyValue('--card-size')) || 56;
+}
+function rnd(arr) {   // Fisher-Yates shuffle in place
+  for (let i = arr.length-1; i > 0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]] = [arr[j],arr[i]];
+  }
+  return arr;
+}
+
+// ══════════════════════════════════════════════
+// SCORE — central mutation + floating FX
+// All score changes go through here so concurrent
+// +/- events never clobber each other.
+// ══════════════════════════════════════════════
+function changeScore(delta) {
+  if (delta === 0) return;
+  if (delta < 0 && state.score <= 0) return;   // floor at 0
+  if (delta < 0) delta = -Math.min(-delta, state.score); // clamp deduction
+  state.score = Math.max(0, state.score + delta);
+  // Update display immediately (render() also does this, but for deductions
+  // that happen outside render we want instant feedback)
+  document.getElementById('score-display').innerHTML =
+    `得分: ${state.score} <span id="total-score-display" style="color:rgba(255,215,0,.65);font-size:clamp(10px,2.5vw,11px)">(累计: ${state.totalScore + state.score})</span>`;
+  spawnScorePopup(delta);
+}
+
+function spawnScorePopup(delta) {
+  const anchor = document.getElementById('score-display');
+  if (!anchor) return;
+  const rect = anchor.getBoundingClientRect();
+  const el = document.createElement('div');
+  const isGain = delta > 0;
+  el.className = 'score-popup ' + (isGain ? 'gain' : 'lose');
+  el.textContent = isGain ? `🪙 +${delta}` : `🩸 ${delta}`;
+
+  const jitter = (Math.random() - 0.5) * 30;
+  const estW = 90;
+  const rawLeft = rect.left + rect.width / 2 + jitter - estW / 2;
+  const safeLeft = Math.max(6, Math.min(rawLeft, window.innerWidth - estW - 6));
+  el.style.left = safeLeft + 'px';
+  // Gain: start at top of score element and float up
+  // Lose: start at bottom of score element and fall down
+  el.style.top = isGain ? rect.top + 'px' : rect.bottom + 'px';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1200);
+}
+
+// ══════════════════════════════════════════════
+// POOL BUILDER — guarantees solvability
+// Every icon appears exactly N×3 times (multiple
+// of 3), so the full deck can always be cleared.
+// ══════════════════════════════════════════════
+function buildPool(iconCount, triples) {
+  // triples = how many groups of 3 per icon
+  const icons = ICONS.slice(0, iconCount);
+  const pool = [];
+  for (const ic of icons)
+    for (let t = 0; t < triples; t++)
+      for (let k = 0; k < 3; k++)
+        pool.push(ic);
+  return rnd(pool);
+}
+
+// Place a pool into layered grid structure.
+// Each layer is centered over the base layer.
+// Half-step offset (z * halfStep) per layer ensures real physical overlap.
+// After placing all cards we compute actual bounds and re-center the whole pile.
+function buildLayeredCards(pool, layers, boardW, boardH, cw, gap) {
+  const cards = [];
+  const base = layers[0];
+  const halfStep = (cw + gap) / 2;
+  // Use a nominal origin of (0,0) first, then we'll shift to true center
+  let idx = 0;
+  for (const lyr of layers) {
+    const offX = ((base.cols - lyr.cols) * (cw + gap)) / 2;
+    const offY = ((base.rows - lyr.rows) * (cw + gap)) / 2;
+    const hx = lyr.z * halfStep;
+    const hy = lyr.z * halfStep;
+    for (let r = 0; r < lyr.rows; r++) {
+      for (let c = 0; c < lyr.cols; c++) {
+        if (idx >= pool.length) break;
+        cards.push({
+          id: ++cardIdCounter,
+          icon: pool[idx++],
+          // nominal position starting at 0,0
+          x: offX + c*(cw+gap) + hx,
+          y: offY + r*(cw+gap) + hy,
+          z: lyr.z,
+          blocked: false, eliminated: false, inSlot: false, inBuffer: false
+        });
+      }
+    }
+  }
+  // Compute actual bounding box of all placed cards
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const c of cards) {
+    if (c.x < minX) minX = c.x;
+    if (c.x + cw > maxX) maxX = c.x + cw;
+    if (c.y < minY) minY = c.y;
+    if (c.y + cw > maxY) maxY = c.y + cw;
+  }
+  const pileW = maxX - minX;
+  const pileH = maxY - minY;
+  // Shift so the pile is perfectly centered in the board
+  const shiftX = (boardW - pileW) / 2 - minX;
+  const shiftY = (boardH - pileH) / 2 - minY;
+  for (const c of cards) {
+    c.x = Math.max(1, Math.min(c.x + shiftX, boardW - cw - 1));
+    c.y = Math.max(1, Math.min(c.y + shiftY, boardH - cw - 1));
+  }
+  return cards;
+}
+
+// ══════════════════════════════════════════════
+// LEVEL GENERATION
+// ══════════════════════════════════════════════
+function generateLevel(level) {
+  const { w, h } = getBoardDimensions();
+  const cw = getCardSize();
+  const gap = 4;
+
+  if (level === 1) {
+    // 2 layers, 24 cards (8 icons × 3)
+    // L0: 5×3=15, L1: 3×3=9 → total 24 ✓
+    const pool = buildPool(8, 1);
+    return buildLayeredCards(pool, [
+      { cols:5, rows:3, z:0 },
+      { cols:3, rows:3, z:1 },
+    ], w, h, cw, gap);
+
+  } else if (level === 2) {
+    // 3 layers, 36 cards (12 icons × 3)
+    // L0:5×3=15, L1:4×3=12, L2:3×3=9 → total 36 ✓
+    const pool = buildPool(12, 1);
+    return buildLayeredCards(pool, [
+      { cols:5, rows:3, z:0 },
+      { cols:4, rows:3, z:1 },
+      { cols:3, rows:3, z:2 },
+    ], w, h, cw, gap);
+
+  } else if (level === 3) {
+    // 4 layers, 60 cards (20 icons × 3)
+    // L0:5×4=20, L1:5×4=20, L2:4×3=12, L3:2×4=8 → total 60 ✓
+    const pool = buildPool(20, 1);
+    return buildLayeredCards(pool, [
+      { cols:5, rows:4, z:0 },
+      { cols:5, rows:4, z:1 },
+      { cols:4, rows:3, z:2 },
+      { cols:2, rows:4, z:3 },
+    ], w, h, cw, gap);
+
+  } else if (level === 4) {
+    // 4 layers, 72 cards (12 icons × 2 triples = 72)
+    // Denser than L3: more cards per layer, same 4 layers
+    // L0:6×4=24, L1:5×4=20, L2:4×4=16, L3:3×4=12 → total 72 ✓
+    const pool = buildPool(12, 2); // 12 icons × 2 × 3 = 72
+    return buildLayeredCards(pool, [
+      { cols:6, rows:4, z:0 },
+      { cols:5, rows:4, z:1 },
+      { cols:4, rows:4, z:2 },
+      { cols:3, rows:4, z:3 },
+    ], w, h, cw, gap);
+
+  } else if (level === 5) {
+    // 5 layers, 90 cards (15 icons × 2 triples = 90)
+    // L0:6×4=24, L1:5×4=20, L2:5×3=15, L3:4×3=12, L4:3×3=9 → hmm = 80
+    // Let's do: L0:6×5=30, L1:5×4=20, L2:4×3=12, L3:3×3=9, L4:3×3=9 → 80
+    // 80/3 not integer. Use 15 icons × 2 = 90 cards:
+    // L0:6×5=30, L1:5×4=20, L2:4×4=16, L3:4×3=12, L4:3×2=6 → 84 not 90
+    // L0:6×5=30, L1:5×4=20, L2:4×4=16, L3:3×3=9, L4:3×5=15 → 90 ✓
+    const pool = buildPool(15, 2); // 15×2×3=90
+    return buildLayeredCards(pool, [
+      { cols:6, rows:5, z:0 },  // 30
+      { cols:5, rows:4, z:1 },  // 20
+      { cols:4, rows:4, z:2 },  // 16
+      { cols:3, rows:3, z:3 },  //  9
+      { cols:3, rows:5, z:4 },  // 15
+    ], w, h, cw, gap);
+
+  } else if (level === 6) {
+    // 6 layers, 108 cards — 18 icons × 2 triples
+    // L0:6×6=36, L1:5×4=20, L2:4×4=16, L3:3×4=12, L4:3×3=9, L5:3×5=15 → 108 ✓
+    const pool = buildPool(18, 2);
+    return buildLayeredCards(pool, [
+      { cols:6, rows:6, z:0 },  // 36
+      { cols:5, rows:4, z:1 },  // 20
+      { cols:4, rows:4, z:2 },  // 16
+      { cols:3, rows:4, z:3 },  // 12
+      { cols:3, rows:3, z:4 },  //  9
+      { cols:3, rows:5, z:5 },  // 15
+    ], w, h, cw, gap);
+
+  } else if (level === 7) {
+    // HELL — 7 layers, 126 cards — 14 icons × 3 triples = 126
+    // L0:6×6=36, L1:5×5=25→ not clean. Use:
+    // L0:6×5=30, L1:5×5=25→no. Try:
+    // 14×3×3=126. Layer positions must sum to 126:
+    // L0:6×6=36, L1:5×5=25→125. Let's do:
+    // 12 icons × 3.5 triples — not integer. 
+    // Use 21 icons... we only have 20. 
+    // 18 icons × 3 triples = 162 — too many.
+    // CLEAN: 14 icons × 3 triples = 126
+    // L0:6×5=30, L1:5×5=25... not divisible.
+    // Layer sums to 126: 36+25+20+18+15+12 = 126? 36+25=61, 61+20=81, 81+18=99, 99+15=114, 114+12=126 ✓
+    // But 5×5=25 is fine as long as total pool=126 and positions=126.
+    // Actually pool size must equal total positions. Let's verify:
+    // 14 icons × 3 triples × 3 per triple = 14×9 = 126 ✓
+    // Positions: 36+25+20+18+15+12=126 ✓
+    const pool = buildPool(14, 3); // 14×3×3=126
+    return buildLayeredCards(pool, [
+      { cols:6, rows:6, z:0 },  // 36
+      { cols:5, rows:5, z:1 },  // 25
+      { cols:5, rows:4, z:2 },  // 20
+      { cols:6, rows:3, z:3 },  // 18
+      { cols:5, rows:3, z:4 },  // 15
+      { cols:4, rows:3, z:5 },  // 12
+    ], w, h, cw, gap);
+
+  } else {
+    // ULTIMATE BOSS — 8 layers, 144 cards — 16 icons × 3 triples = 144
+    // Positions: 36+25+20+18+15+12+10+8=144
+    // L0:6×6=36, L1:5×5=25, L2:5×4=20, L3:6×3=18, L4:5×3=15, L5:4×3=12, L6:2×5=10, L7:2×4=8 → 144 ✓
+    const pool = buildPool(16, 3); // 16×3×3=144
+    return buildLayeredCards(pool, [
+      { cols:6, rows:6, z:0 },  // 36
+      { cols:5, rows:5, z:1 },  // 25
+      { cols:5, rows:4, z:2 },  // 20
+      { cols:6, rows:3, z:3 },  // 18
+      { cols:5, rows:3, z:4 },  // 15
+      { cols:4, rows:3, z:5 },  // 12
+      { cols:2, rows:5, z:6 },  // 10
+      { cols:2, rows:4, z:7 },  //  8
+    ], w, h, cw, gap);
+  }
+}
+
+// ══════════════════════════════════════════════
+// BLOCKING LOGIC
+// Card is blocked if ANY card with strictly higher
+// z AND physically overlapping it exists on board.
+// ══════════════════════════════════════════════
+function computeBlocked(cards) {
+  const cw = getCardSize();
+  const threshold = cw * 0.72;
+  const active = cards.filter(c => !c.eliminated && !c.inSlot && !c.inBuffer);
+  for (const card of active) {
+    card.blocked = false;
+    for (const other of active) {
+      if (other.id === card.id || other.z <= card.z) continue;
+      if (Math.abs(other.x - card.x) < threshold &&
+          Math.abs(other.y - card.y) < threshold) {
+        card.blocked = true; break;
+      }
+    }
+  }
+  for (const c of cards)
+    if (c.eliminated || c.inSlot || c.inBuffer) c.blocked = false;
+}
+
+// ══════════════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════════════
+function render() {
+  const board     = document.getElementById('board');
+  const slotArea  = document.getElementById('slot-area');
+  const bufArea   = document.getElementById('buffer-area');
+  const bufCards  = document.getElementById('buffer-cards');
+
+  // ── Board cards (diff update) ──
+  const existing = {};
+  board.querySelectorAll('.card').forEach(el => existing[el.dataset.id] = el);
+
+  for (const card of state.cards) {
+    if (card.eliminated || card.inSlot || card.inBuffer) {
+      existing[card.id]?.remove(); continue;
+    }
+    let el = existing[card.id];
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'card';
+      el.dataset.id = card.id;
+      el.textContent = card.icon;
+      el.addEventListener('touchstart', onCardTouchStart, { passive: true });
+      el.addEventListener('touchend',   onCardTouchEnd,   { passive: false });
+      el.addEventListener('touchcancel',onCardTouchCancel,{ passive: true });
+      el.addEventListener('click',      onCardClickFallback);
+      board.appendChild(el);
+    }
+    el.style.left   = card.x + 'px';
+    el.style.top    = card.y + 'px';
+    el.style.zIndex = card.z + 1;
+    el.classList.toggle('active',  !card.blocked);
+    el.classList.toggle('blocked',  card.blocked);
+    if (el.textContent !== card.icon) el.textContent = card.icon;
+    delete existing[card.id];
+  }
+  Object.values(existing).forEach(el => el.remove());
+
+  // ── Slots ──
+  slotArea.innerHTML = '';
+  for (let i = 0; i < SLOT_SIZE; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'slot';
+    const card = state.slots[i];
+    if (card) {
+      slot.classList.add('filled');
+      slot.textContent = card.icon;
+    }
+    if (state.slots.length >= 5 && card) slot.classList.add('danger');
+    slotArea.appendChild(slot);
+  }
+
+  // ── Buffer / park area ──
+  if (state.buffer.length > 0) {
+    bufArea.classList.add('active');
+    bufCards.innerHTML = '';
+    for (const card of state.buffer) {
+      const el = document.createElement('div');
+      el.className = 'buffer-card';
+      el.dataset.bufId = card.id;
+      el.textContent = card.icon;
+      el.addEventListener('touchstart', onBufTouchStart, { passive: true });
+      el.addEventListener('touchend',   onBufTouchEnd,   { passive: false });
+      el.addEventListener('touchcancel',onBufTouchCancel,{ passive: true });
+      el.addEventListener('click',      onBufClickFallback);
+      bufCards.appendChild(el);
+    }
+  } else {
+    bufArea.classList.remove('active');
+    bufCards.innerHTML = '';
+  }
+
+  // ── Stats ──
+  const remaining = state.cards.filter(c => !c.eliminated && !c.inSlot && !c.inBuffer).length;
+  const total = state.totalCards;
+  const done  = total - remaining - state.slots.length - state.buffer.length;
+  const pct   = Math.max(0, done / total * 100);
+  document.getElementById('progress-fill').style.width  = pct.toFixed(1) + '%';
+  document.getElementById('card-count').textContent     = `剩余: ${remaining} 张`;
+  document.getElementById('score-display').innerHTML    =
+    `得分: ${state.score} <span id="total-score-display" style="color:rgba(255,215,0,.65);font-size:clamp(10px,2.5vw,11px)">(累计: ${state.totalScore + state.score})</span>`;
+  document.getElementById('undo-count').textContent     = state.tools.undo;
+  document.getElementById('remove-count').textContent   = state.tools.remove;
+  document.getElementById('shuffle-count').textContent  = state.tools.shuffle;
+  document.getElementById('btn-undo').disabled    = state.tools.undo   <= 0 || state.history.length === 0;
+  document.getElementById('btn-remove').disabled  = state.tools.remove <= 0 || state.slots.length   === 0;
+  document.getElementById('btn-shuffle').disabled = state.tools.shuffle<= 0;
+}
+
+// ══════════════════════════════════════════════
+// TOUCH — instant response (no 300ms delay)
+// ══════════════════════════════════════════════
+let touchFired = false;
+
+function onCardTouchStart(e) {
+  const id = parseInt(e.currentTarget.dataset.id);
+  const card = state.cards.find(c => c.id === id);
+  if (!card || card.blocked || card.eliminated || card.inSlot || card.inBuffer) return;
+  e.currentTarget.classList.add('pressing');
+}
+function onCardTouchEnd(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('pressing');
+  touchFired = true; setTimeout(() => { touchFired = false; }, 400);
+  processCardClick(parseInt(e.currentTarget.dataset.id));
+}
+function onCardTouchCancel(e) { e.currentTarget.classList.remove('pressing'); }
+function onCardClickFallback(e) {
+  if (touchFired) return;
+  processCardClick(parseInt(e.currentTarget.dataset.id));
+}
+
+// ── Buffer card touch ──
+let bufTouchFired = false;
+function onBufTouchStart(e)  { e.currentTarget.classList.add('pressing'); }
+function onBufTouchEnd(e)    {
+  e.preventDefault();
+  e.currentTarget.classList.remove('pressing');
+  bufTouchFired = true; setTimeout(() => { bufTouchFired = false; }, 400);
+  processBufferCardClick(parseInt(e.currentTarget.dataset.bufId));
+}
+function onBufTouchCancel(e) { e.currentTarget.classList.remove('pressing'); }
+function onBufClickFallback(e) {
+  if (bufTouchFired) return;
+  processBufferCardClick(parseInt(e.currentTarget.dataset.bufId));
+}
+
+// ══════════════════════════════════════════════
+// GAME LOGIC
+// ══════════════════════════════════════════════
+function processCardClick(id) {
+  if (state.gameOver) return;
+  const card = state.cards.find(c => c.id === id);
+  if (!card || card.blocked || card.eliminated || card.inSlot || card.inBuffer) return;
+  if (state.slots.length >= SLOT_SIZE) return;
+
+  state.history.push({ slotsIds: state.slots.map(c=>c.id), cardId: id, type:'board' });
+  card.inSlot = true;
+  state.slots.push(card);
+
+  checkElimination();
+  computeBlocked(state.cards);
+  render();
+  setTimeout(checkWinLose, 40);
+}
+
+// Move a card from the buffer (park) into the slot
+function processBufferCardClick(id) {
+  if (state.gameOver) return;
+  if (state.slots.length >= SLOT_SIZE) return;
+  const idx = state.buffer.findIndex(c => c.id === id);
+  if (idx === -1) return;
+  const card = state.buffer.splice(idx, 1)[0];
+  card.inBuffer = false;
+  card.inSlot   = true;
+  state.slots.push(card);
+
+  checkElimination();
+  computeBlocked(state.cards);
+  render();
+  setTimeout(checkWinLose, 40);
+}
+
+function checkElimination() {
+  const counts = {};
+  for (const c of state.slots) counts[c.icon] = (counts[c.icon]||0)+1;
+  for (const [icon, count] of Object.entries(counts)) {
+    if (count >= 3) {
+      let removed = 0;
+      state.slots = state.slots.filter(c => {
+        if (c.icon === icon && removed < 3) { c.eliminated = true; removed++; return false; }
+        return true;
+      });
+      state.combo++;
+      const gain = 30 * state.combo;
+      changeScore(+gain);
+      if (state.combo >= 2) showCombo(state.combo);
+      spawnParticles(icon);
+      playSound('eliminate');
+      checkElimination(); // chain
+      return;
+    }
+  }
+  state.combo = 0;
+  playSound('place');
+}
+
+function checkWinLose() {
+  const onBoard  = state.cards.filter(c => !c.eliminated && !c.inSlot && !c.inBuffer).length;
+  const inBuffer = state.buffer.length;
+  const inSlot   = state.slots.length;
+  if (onBoard === 0 && inBuffer === 0 && inSlot === 0) { showVictory(); return; }
+  if (inSlot >= SLOT_SIZE) {
+    const counts = {};
+    for (const c of state.slots) counts[c.icon] = (counts[c.icon]||0)+1;
+    if (!Object.values(counts).some(v => v >= 3)) setTimeout(showGameOver, 300);
+  }
+}
+
+// ══════════════════════════════════════════════
+// TOOLS
+// ══════════════════════════════════════════════
+let toolTouchFired = false;
+function handleTool(e, type) {
+  if (e.type === 'touchend') {
+    e.preventDefault();
+    toolTouchFired = true; setTimeout(()=>{ toolTouchFired=false; }, 400);
+  } else if (e.type === 'click' && toolTouchFired) return;
+  if (type === 'undo')    useUndo();
+  if (type === 'remove')  useRemove();
+  if (type === 'shuffle') useShuffle();
+}
+
+let restartTouchFired = false;
+function handleRestart(e) {
+  if (e.type === 'touchend') {
+    e.preventDefault();
+    restartTouchFired = true; setTimeout(()=>{ restartTouchFired=false; }, 400);
+  } else if (e.type === 'click' && restartTouchFired) return;
+  // Restart current level (same logic as retry-after-fail: restore totalScore)
+  stopTimer();
+  state.gameOver = false; // prevent showGameOver from blocking
+  startLevel(state.level);
+}
+
+function useUndo() {
+  if (state.tools.undo <= 0 || state.history.length === 0) return;
+  const last = state.history.pop();
+  const card = state.cards.find(c => c.id === last.cardId);
+  if (card) { card.inSlot = false; card.inBuffer = false; card.eliminated = false; }
+  state.slots = last.slotsIds
+    .map(id => state.cards.find(c => c.id === id))
+    .filter(Boolean);
+  for (const c of state.slots) { c.eliminated = false; c.inSlot = true; c.inBuffer = false; }
+  state.tools.undo--;
+  state.combo = 0;
+  changeScore(-10);
+  computeBlocked(state.cards);
+  render();
+}
+
+// Move first N cards from slot → buffer (permanent park)
+function useRemove() {
+  if (state.tools.remove <= 0 || state.slots.length === 0) return;
+  const n = Math.min(3, state.slots.length);
+  const removed = state.slots.splice(0, n);
+  for (const c of removed) { c.inSlot = false; c.inBuffer = true; }
+  state.buffer.push(...removed);
+  state.tools.remove--;
+  changeScore(-10);
+  computeBlocked(state.cards);
+  render();
+}
+
+// Shuffle only icons on board (preserve positions/z for blocking integrity)
+function useShuffle() {
+  if (state.tools.shuffle <= 0) return;
+  const active = state.cards.filter(c => !c.eliminated && !c.inSlot && !c.inBuffer);
+  const icons = rnd(active.map(c => c.icon));
+  for (let i = 0; i < active.length; i++) active[i].icon = icons[i];
+  state.tools.shuffle--;
+  changeScore(-10);
+  computeBlocked(state.cards);
+  render();
+  spawnParticles('🔀', 12);
+}
+
+// ══════════════════════════════════════════════
+// FX
+// ══════════════════════════════════════════════
+function spawnParticles(icon, count=8) {
+  const rect = document.getElementById('board').getBoundingClientRect();
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle'; p.textContent = icon;
+    p.style.left = (rect.left + rect.width/2  + (Math.random()-.5)*160) + 'px';
+    p.style.top  = (rect.top  + rect.height/2 + (Math.random()-.5)*80 ) + 'px';
+    p.style.animationDuration = (.5+Math.random()*.5)+'s';
+    p.style.animationDelay   = (Math.random()*.3)+'s';
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 1200);
+  }
+}
+function showCombo(n) {
+  const el = document.createElement('div');
+  el.className='combo-popup'; el.textContent=`🔥 ${n}连消！`;
+  el.style.left='50%'; el.style.top='35%';
+  document.body.appendChild(el); setTimeout(()=>el.remove(),800);
+}
+function spawnConfetti() {
+  const cols=['#ff6b35','#ffd700','#4ade80','#60a5fa','#f472b6','#a78bfa'];
+  for (let i=0;i<55;i++) {
+    const p=document.createElement('div'); p.className='confetti-piece';
+    p.style.background=cols[i%cols.length];
+    p.style.left=Math.random()*100+'vw'; p.style.top='-20px';
+    p.style.animationDuration=(1.5+Math.random()*2)+'s';
+    p.style.animationDelay=Math.random()+'s';
+    p.style.borderRadius=Math.random()>.5?'50%':'2px';
+    document.body.appendChild(p); setTimeout(()=>p.remove(),4000);
+  }
+}
+
+// ══════════════════════════════════════════════
+// SOUND — iOS 18 compatible
+// iOS 18 puts AudioContext into 'interrupted' after screen lock.
+// resume() alone doesn't work; we must close & recreate on the
+// next real user-gesture (touchend/click) inside a non-passive handler.
+// ══════════════════════════════════════════════
+let audioCtx = null;
+
+function ensureAudio() {
+  // If context is missing, closed, or interrupted → recreate
+  if (!audioCtx || audioCtx.state === 'closed' || audioCtx.state === 'interrupted') {
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch(e) { audioCtx = null; }
+  }
+  return audioCtx;
+}
+
+function playSound(type){
+  try{
+    const ctx = ensureAudio();
+    if (!ctx) return;
+
+    // If suspended (newly created on iOS), resume first then play.
+    // We schedule the actual sound nodes after the resume promise resolves.
+    const _play = () => {
+      try {
+        if (ctx.state !== 'running') return;
+        const osc=ctx.createOscillator(),g=ctx.createGain();
+        osc.connect(g);g.connect(ctx.destination);
+        if(type==='place'){
+          osc.frequency.setValueAtTime(660,ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(880,ctx.currentTime+.1);
+          g.gain.setValueAtTime(.14,ctx.currentTime);
+          g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.15);
+          osc.start(ctx.currentTime);osc.stop(ctx.currentTime+.15);
+        }else if(type==='eliminate'){
+          [523,659,784,1047].forEach((f,i)=>{
+            const o=ctx.createOscillator(),gg=ctx.createGain();
+            o.connect(gg);gg.connect(ctx.destination);o.frequency.value=f;
+            gg.gain.setValueAtTime(.18,ctx.currentTime+i*.06);
+            gg.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+i*.06+.2);
+            o.start(ctx.currentTime+i*.06);o.stop(ctx.currentTime+i*.06+.2);
+          });
+        }else if(type==='win'){
+          [523,659,784,1047,1175].forEach((f,i)=>{
+            const o=ctx.createOscillator(),gg=ctx.createGain();
+            o.connect(gg);gg.connect(ctx.destination);o.frequency.value=f;
+            gg.gain.setValueAtTime(.15,ctx.currentTime+i*.12);
+            gg.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+i*.12+.3);
+            o.start(ctx.currentTime+i*.12);o.stop(ctx.currentTime+i*.12+.3);
+          });
+        }else if(type==='lose'){
+          osc.type='sawtooth';
+          osc.frequency.setValueAtTime(440,ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(110,ctx.currentTime+.4);
+          g.gain.setValueAtTime(.2,ctx.currentTime);
+          g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.4);
+          osc.start(ctx.currentTime);osc.stop(ctx.currentTime+.4);
+        }
+      } catch(e) {}
+    };
+
+    if (ctx.state === 'running') {
+      _play();
+    } else {
+      // suspended → resume, then play immediately when ready
+      ctx.resume().then(_play).catch(()=>{});
+    }
+  }catch(e){}
+}
+
+// ══════════════════════════════════════════════
+// LEVEL CONFIG
+// ══════════════════════════════════════════════
+const TOTAL_LEVELS = 8;
+const LEVEL_NAMES  = ['','第一关','第二关','第三关','第四关','第五关','第六关','第七关','第八关'];
+const LEVEL_EMOJIS = ['','😊','😏','😤','😰','🤯','💀','👹','☠️'];
+// Time limits in seconds per level
+const LEVEL_TIME   = [0, 60, 120, 180, 240, 300, 360, 420, 480];
+// Tool counts per level [undo, remove, shuffle]
+const LEVEL_TOOLS  = [
+  [],
+  [1,1,1], // L1
+  [1,1,1], // L2
+  [2,2,2], // L3
+  [2,2,2], // L4
+  [3,3,3], // L5
+  [3,3,3], // L6
+  [4,4,4], // L7
+  [4,4,4], // L8
+];
+
+// ══════════════════════════════════════════════
+// TIMER — counts DOWN to zero, deducts 1pt/sec
+// ══════════════════════════════════════════════
+function startTimer() {
+  state.startTime = Date.now();
+  clearInterval(state.timerInterval);
+  const limitSec = LEVEL_TIME[state.level] || 60;
+  let lastDeductSec = 0; // track seconds elapsed for per-second deduction
+  state.timerInterval = setInterval(() => {
+    const elapsed   = Math.floor((Date.now() - state.startTime) / 1000);
+    const remaining = Math.max(0, limitSec - elapsed);
+    const m = Math.floor(remaining / 60);
+    const s = remaining % 60;
+    const timerEl = document.getElementById('timer');
+    timerEl.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    timerEl.style.color = remaining <= 10 ? '#f87171' : '';
+
+    // Board danger flash when ≤ 10s remain
+    const boardContainer = document.getElementById('board-container');
+    if (remaining <= 10 && remaining > 0) {
+      boardContainer.classList.add('danger-flash');
+    } else {
+      boardContainer.classList.remove('danger-flash');
+    }
+
+    // Deduct 1 point for each new second that has passed
+    if (elapsed > lastDeductSec && !state.gameOver) {
+      changeScore(-1);
+      lastDeductSec = elapsed;
+    }
+
+    if (remaining <= 0 && !state.gameOver) {
+      showTimeUp();
+    }
+  }, 500);
+}
+function stopTimer() {
+  clearInterval(state.timerInterval);
+  document.getElementById('board-container')?.classList.remove('danger-flash');
+}
+
+// ══════════════════════════════════════════════
+// SCREENS
+// ══════════════════════════════════════════════
+function showVictory(){
+  stopTimer(); playSound('win'); spawnConfetti(); state.gameOver=true;
+  // Track highest cleared level and record stats
+  if (state.level > state.highestCleared) state.highestCleared = state.level;
+  const clearSec = Math.floor((Date.now() - state.startTime) / 1000);
+  // Only update record if this is a better (faster) clear, or first clear
+  const prev = state.levelRecords[state.level];
+  if (!prev || clearSec < prev.clearSec) {
+    state.levelRecords[state.level] = { score: state.score, clearSec };
+  }
+  const lvl = state.level;
+  const hasNext = lvl < TOTAL_LEVELS;
+  const total = state.totalScore + state.score;
+  const msgs = ['',
+    '入门完成！准备迎接更多层叠挑战。',
+    '三层拿下！层叠理解得不错。',
+    '四层全清！消除思路很清晰。',
+    '密集层叠难不倒你！',
+    '你已是顶级玩家！',
+    '六层全清！你已超越普通人类！',
+    '地狱模式通过！<br>⚠️ <strong style="color:#f87171">终极关卡 · 第八关</strong> 即将来临！<br>这是最后的考验，你准备好了吗？',
+    '🐔 <strong style="color:#ffd700">大吉大利，今晚吃鸡！</strong> 🐔<br>🌟 八关全通！你是传说中的消除之神！ 🌟',
+  ];
+  const emojis = ['','🎉','🏅','🏆','💎','👑','🐐','👹','🎖️'];
+  const titles = ['','第一关通过！','第二关通过！','第三关通过！','第四关通过！','第五关通过！','第六关通过！','第七关通过！','☠️ 全关通关！'];
+  const o = document.createElement('div'); o.className='overlay';
+  // L8 gets a special golden egg box
+  if (lvl === 8) {
+    o.innerHTML=`<div class="overlay-box" style="background:linear-gradient(145deg,#7c2d12,#1a0a2e);border-color:rgba(255,215,0,.6);box-shadow:0 0 40px rgba(255,215,0,.4)">
+      <div class="overlay-emoji" style="font-size:72px">🐔</div>
+      <div class="overlay-title" style="font-size:clamp(22px,6vw,30px)">大吉大利，今晚吃鸡！</div>
+      <div class="overlay-desc" style="color:rgba(255,215,0,.9);font-size:15px">🏆 八关全通！你是传说中的消除之神！ 🏆<br><br>本关: <strong style="color:#ffd700">${state.score}</strong> 分　累计: <strong style="color:#ffd700">${total}</strong> 分</div>
+      <button class="btn-primary" style="background:linear-gradient(135deg,#b45309,#78350f)" ontouchend="qBtn(event,1)" onclick="qBtn(event,1)">🔄 重新挑战</button>
+    </div>`;
+  } else {
+    o.innerHTML=`<div class="overlay-box">
+      <div class="overlay-emoji">${emojis[lvl]||'🏆'}</div>
+      <div class="overlay-title">${titles[lvl]||'通关！'}</div>
+      <div class="overlay-desc">${msgs[lvl]||''}<br>本关: <strong style="color:#ffd700">${state.score}</strong> 分　累计: <strong style="color:#ffd700">${total}</strong> 分</div>
+      ${hasNext?`<button class="btn-primary" ontouchend="qBtn(event,${lvl+1})" onclick="qBtn(event,${lvl+1})">${lvl===7?'⚔️ 挑战终极第八关 ☠️':`挑战${LEVEL_NAMES[lvl+1]} ${LEVEL_EMOJIS[lvl+1]}`}</button>`:''}
+      <button class="btn-secondary" ontouchend="qBtn(event,${lvl})" onclick="qBtn(event,${lvl})">再玩一次</button>
+    </div>`;
+  }
+  document.body.appendChild(o);
+}
+
+function showGameOver(){
+  if(state.gameOver)return;
+  stopTimer(); playSound('lose'); state.gameOver=true;
+  const lvl=state.level;
+  const total = state.totalScore + state.score;
+  const o=document.createElement('div');o.className='overlay';
+  o.innerHTML=`<div class="overlay-box">
+    <div class="overlay-emoji">😭</div>
+    <div class="overlay-title">槽位已满！</div>
+    <div class="overlay-desc">差一点……合理使用"移出"暂存关键牌！<br>本关: <strong style="color:#ffd700">${state.score}</strong> 分　累计: <strong style="color:#ffd700">${total}</strong> 分</div>
+    <button class="btn-primary" ontouchend="qBtn(event,${lvl})" onclick="qBtn(event,${lvl})">再试一次 💪</button>
+    ${lvl>1?`<button class="btn-secondary" ontouchend="qBtn(event,1)" onclick="qBtn(event,1)">回到第一关</button>`:''}
+  </div>`;
+  document.body.appendChild(o);
+}
+
+function showTimeUp(){
+  if(state.gameOver)return;
+  stopTimer(); playSound('lose'); state.gameOver=true;
+  const lvl=state.level;
+  const total = state.totalScore + state.score;
+  const o=document.createElement('div');o.className='overlay';
+  o.innerHTML=`<div class="overlay-box">
+    <div class="overlay-emoji">⏰</div>
+    <div class="overlay-title">时间到！</div>
+    <div class="overlay-desc">时限 ${LEVEL_TIME[lvl]/60} 分钟已到，未能全部消除。<br>本关: <strong style="color:#ffd700">${state.score}</strong> 分　累计: <strong style="color:#ffd700">${total}</strong> 分</div>
+    <button class="btn-primary" ontouchend="qBtn(event,${lvl})" onclick="qBtn(event,${lvl})">再试一次 💪</button>
+    ${lvl>1?`<button class="btn-secondary" ontouchend="qBtn(event,1)" onclick="qBtn(event,1)">回到第一关</button>`:''}
+  </div>`;
+  document.body.appendChild(o);
+}
+
+let levelMapTF = false;
+function openLevelMap(e) {
+  if (e.type === 'touchend') { e.preventDefault(); levelMapTF = true; setTimeout(()=>{levelMapTF=false},400); }
+  else if (e.type === 'click' && levelMapTF) return;
+
+  const grid = document.getElementById('level-map-grid');
+  const LEVEL_DESCS = ['','简单','普通','中级','进阶','困难','极难','地狱','终极'];
+  const LEVEL_ICONS = ['','🌱','🌿','🔥','💥','⚡','💀','👹','☠️'];
+  const LEVEL_TIMES_MIN = [0,1,2,3,4,5,6,7,8];
+  grid.innerHTML = '';
+  for (let i = 1; i <= TOTAL_LEVELS; i++) {
+    const cell = document.createElement('div');
+    let cls = 'lm-cell';
+    if (i === state.level) cls += ' current';
+    else if (i <= state.highestCleared) cls += ' cleared';
+    else if (i === state.highestCleared + 1 || state.highestCleared === 0 && i === 1) cls += ' available';
+    else cls += ' locked';
+    cell.className = cls;
+
+    const isLocked = cls.includes('locked');
+    const isCleared = cls.includes('cleared');
+    const isCurrent = cls.includes('current');
+
+    const rec = state.levelRecords[i];
+    let bottomLine = '';
+    if (isCleared && rec) {
+      const m = Math.floor(rec.clearSec / 60);
+      const s = String(rec.clearSec % 60).padStart(2, '0');
+      bottomLine = `<div style="font-size:9px;line-height:1.5;opacity:.85;color:#4ade80">${m}:${s} · ${rec.score}分</div>`;
+    } else if (!isCleared) {
+      bottomLine = `<div style="font-size:9px;opacity:.5">${LEVEL_TIMES_MIN[i]}min</div>`;
+    }
+
+    cell.innerHTML = `
+      <div class="lm-num">${isLocked ? '🔒' : LEVEL_ICONS[i]}</div>
+      <div style="font-size:13px;font-weight:900">${i}</div>
+      <div class="lm-label">${isLocked ? '未解锁' : isCleared ? '✓已通关' : isCurrent ? '进行中' : LEVEL_DESCS[i]}</div>
+      ${bottomLine}
+    `;
+    if (!isLocked) {
+      cell.addEventListener('touchend', (ev) => { ev.preventDefault(); closeLevelMapDirect(); startLevel(i); });
+      cell.addEventListener('click', () => { closeLevelMapDirect(); startLevel(i); });
+    }
+    grid.appendChild(cell);
+  }
+  document.getElementById('level-map-overlay').classList.remove('hidden');
+}
+
+function closeLevelMapDirect() {
+  document.getElementById('level-map-overlay').classList.add('hidden');
+}
+
+let closeMapTF = false;
+function closeLevelMap(e) {
+  if (e.type === 'touchend') { e.preventDefault(); closeMapTF = true; setTimeout(()=>{closeMapTF=false},400); }
+  else if (e.type === 'click' && closeMapTF) return;
+  closeLevelMapDirect();
+}
+
+// Close on backdrop click — attach after DOM is ready
+// (script runs at end of body so DOM is already available)
+document.getElementById('level-map-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeLevelMapDirect();
+});
+
+let ovTF=false;
+function qBtn(e,lvl){
+  if(e.type==='touchend'){e.preventDefault();ovTF=true;setTimeout(()=>{ovTF=false},400);}
+  else if(e.type==='click'&&ovTF)return;
+  e.target.closest('.overlay')?.remove();
+  startLevel(lvl);
+}
+
+// ══════════════════════════════════════════════
+// START LEVEL
+// ══════════════════════════════════════════════
+function startLevel(level){
+  if (level === 1) {
+    state.totalScore = 0;
+    state.levelStartTotalScore = 0;
+    state.highestCleared = 0;
+    state.levelRecords = {};
+  } else if (level === state.level) {
+    // Retrying the same level after failure — restore totalScore to what it
+    // was at the START of this level (discard this failed attempt's score)
+    state.totalScore = state.levelStartTotalScore;
+  } else {
+    // Advancing to next level — accumulate this level's score
+    state.totalScore += state.score;
+    state.levelStartTotalScore = state.totalScore;
+  }
+  state.gameOver=false; state.level=level;
+  state.slots=[]; state.buffer=[]; state.history=[];
+  state.score=0; state.combo=0;
+  const t = LEVEL_TOOLS[level] || [1,1,1];
+  state.tools = { undo: t[0], remove: t[1], shuffle: t[2] };
+  document.getElementById('level-label').textContent = `${level}/${TOTAL_LEVELS}`;
+  document.getElementById('board').innerHTML='';
+  document.getElementById('timer').style.color = '';
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    state.cards=generateLevel(level);
+    state.totalCards=state.cards.length;
+    computeBlocked(state.cards);
+    render();
+    startTimer();
+  }));
+}
+
+// ══════════════════════════════════════════════
+// RESIZE
+// ══════════════════════════════════════════════
+let resizeT;
+window.addEventListener('resize',()=>{
+  clearTimeout(resizeT);
+  resizeT=setTimeout(()=>{
+    if(!state.gameOver){
+      const{w,h}=getBoardDimensions(),cw=getCardSize();
+      for(const c of state.cards)
+        if(!c.eliminated&&!c.inSlot&&!c.inBuffer){
+          c.x=Math.max(1,Math.min(c.x,w-cw-1));
+          c.y=Math.max(1,Math.min(c.y,h-cw-1));
+        }
+      computeBlocked(state.cards);render();
+    }
+  },200);
+});
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+document.addEventListener('touchmove', e => e.preventDefault(), {passive: false});
+
+// iOS 18: AudioContext must be created/resumed inside a non-passive
+// user-gesture handler. touchend (non-passive) satisfies this requirement.
+// We call ensureAudio() here so any interrupted ctx gets recreated.
+function _iosAudioUnlock(e) {
+  // non-passive so we can call preventDefault if needed, but we don't here
+  ensureAudio();
+}
+document.addEventListener('touchend', _iosAudioUnlock, {passive: false, capture: true});
+
+// Also handle returning from background / screen lock via visibilitychange
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    // On iOS, AudioContext.state becomes 'interrupted' after lock screen.
+    // Close it so ensureAudio() will recreate it fresh on next touch.
+    if (audioCtx && (audioCtx.state === 'interrupted' || audioCtx.state === 'suspended')) {
+      try { audioCtx.close(); } catch(e) {}
+      audioCtx = null;
+    }
+  }
+});
+
+startLevel(1);
+</script>
 </body>
 </html>
